@@ -1,526 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>AgroMind — Storage Dashboard</title>
-
-<!-- Paho MQTT for WSS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-  :root{
-    --bg:#0f1724; --card:#0b1220; --accent:#16a34a; --muted:#9aa7b2; --glass: rgba(255,255,255,0.03);
-    --danger:#ef4444; --soft:#111827;
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  }
-  body{margin:0; background:linear-gradient(180deg,#071025 0%, #071725 60%); color:#e6eef6;}
-  header{padding:18px 28px; display:flex; align-items:center; justify-content:space-between; gap:16px;}
-  .brand{display:flex; gap:12px; align-items:center}
-  .logo{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#3ddc84); display:flex; align-items:center; justify-content:center; font-weight:700; color:#042018;}
-  h1{font-size:18px;margin:0}
-  .subtitle{color:var(--muted); font-size:13px}
-
-  main{padding:14px 28px; display:grid; grid-template-columns: 360px 1fr; gap:18px; align-items:start;}
-  /* left column */
-  .left{display:flex; flex-direction:column; gap:14px;}
-  .card{background:var(--card); padding:14px; border-radius:10px; box-shadow: 0 6px 20px rgba(2,6,23,0.6);}
-  .status{display:flex; gap:12px; align-items:center; justify-content:space-between;}
-  .dot{width:12px;height:12px;border-radius:50%; background:#f59e0b; box-shadow:0 0 8px rgba(245,158,11,0.35)}
-  .metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px}
-  .metric{background:var(--glass); padding:12px; border-radius:8px; text-align:left}
-  .metric small{display:block;color:var(--muted); font-size:12px}
-  .metric h2{margin:6px 0 0 0; font-size:20px}
-
-  /* crop selector & estimate */
-  .crop-row{display:flex; gap:10px; align-items:center; margin-top:10px}
-  select,input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit}
-  button{padding:8px 12px;border-radius:8px;border:none;background:var(--accent); color:#042018; cursor:pointer}
-  button.secondary{background:transparent; color:var(--accent); border:1px solid rgba(26,197,77,0.12)}
-
-  /* right column */
-  .right{display:flex; flex-direction:column; gap:14px;}
-  .row{display:flex; gap:14px}
-  .large{height:360px}
-  .chart-container{height:320px; padding:8px}
-  .history-table{max-height:220px; overflow:auto; margin-top:8px}
-  table{width:100%; border-collapse:collapse; font-size:13px}
-  th,td{padding:8px; border-bottom:1px dashed rgba(255,255,255,0.03); text-align:left}
-  th{color:var(--muted); font-size:12px}
-
-  .alert{padding:10px;border-radius:8px;background:rgba(239,68,68,0.09); color:var(--danger); border:1px solid rgba(239,68,68,0.12)}
-  .ok{background:rgba(16,185,129,0.06); color:#10b981; border:1px solid rgba(16,185,129,0.12)}
-
-  footer{color:var(--muted); font-size:13px; padding:18px 28px}
-  .small{font-size:13px;color:var(--muted)}
-  .download{float:right}
-  @media(max-width:980px){ main{grid-template-columns:1fr; padding:12px} .left{order:2}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farmer Storage Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      background: #1e293b;
+      width: 100%;
+      padding: 20px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #38bdf8;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      width: 90%;
+      max-width: 1000px;
+      margin: 30px auto;
+    }
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      transition: transform 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .card h2 {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+      color: #38bdf8;
+    }
+    .value {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .led-button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    .led-button.off {
+      background: #f87171;
+      color: #fff;
+    }
+    footer {
+      margin: 20px;
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/mqttws31.min.js"></script>
 </head>
 <body>
+  <header>🌾 Farmer Storage Monitoring Dashboard</header>
 
-<header>
-  <div class="brand">
-    <div class="logo">AM</div>
-    <div>
-      <h1>AgroMind — Storage Dashboard</h1>
-      <div class="subtitle">Live DHT feed · Preservation estimator · Market tracker</div>
-    </div>
-  </div>
-  <div class="small" id="connStatus">Connecting to broker...</div>
-</header>
-
-<main>
-  <!-- LEFT: controls & live cards -->
-  <section class="left">
+  <section class="dashboard">
     <div class="card">
-      <div class="status">
-        <div>
-          <strong>Connection</strong>
-          <div class="small" id="brokerInfo">broker.hivemq.com (WSS)</div>
-        </div>
-        <div style="text-align:right">
-          <div id="connDot" class="dot" title="status"></div>
-          <div class="small" id="connText">Connecting...</div>
-        </div>
-      </div>
-
-      <div class="metrics" style="margin-top:14px">
-        <div class="metric">
-          <small>Temperature (°C)</small>
-          <h2 id="tempVal">—</h2>
-        </div>
-        <div class="metric">
-          <small>Humidity (%)</small>
-          <h2 id="humVal">—</h2>
-        </div>
-        <div class="metric">
-          <small>Last update</small>
-          <h2 id="lastUpdate">—</h2>
-        </div>
-        <div class="metric">
-          <small>Current crop</small>
-          <h2 id="currentCrop">—</h2>
-        </div>
-      </div>
-
-      <div style="margin-top:12px; display:flex; gap:10px; align-items:center; justify-content:space-between;">
-        <div style="flex:1">
-          <label class="small">Select crop</label>
-          <div class="crop-row">
-            <select id="cropSelect">
-              <!-- crop list & default shelf-life values (days, ideal temp range) -->
-              <option value="wheat">Wheat</option>
-              <option value="rice">Rice</option>
-              <option value="potato">Potato</option>
-              <option value="onion">Onion</option>
-              <option value="maize">Maize</option>
-              <option value="tomato">Tomato</option>
-            </select>
-            <button id="refreshBtn" class="secondary">Refresh</button>
-          </div>
-        </div>
-
-        <div style="width:190px">
-          <label class="small">Preservation</label>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <div style="flex:1">
-              <h2 id="preserveDays">— days</h2>
-              <div class="small" id="preserveNote">Estimate</div>
-            </div>
-            <button id="csvBtn" title="Export history" style="height:40px">Export CSV</button>
-          </div>
-        </div>
-      </div>
+      <h2>🌡️ Temperature</h2>
+      <div class="value" id="temperature">-- °C</div>
     </div>
-
     <div class="card">
-      <strong>Market · Price tracker</strong>
-      <div class="small" style="margin-top:8px">Track live market price and quick prediction</div>
-
-      <div style="display:flex; gap:8px; margin-top:12px; align-items:center;">
-        <input id="marketInput" placeholder="Manual price (₹/kg) — optional" />
-        <button id="sendPrice">Send</button>
-      </div>
-
-      <div style="margin-top:10px; display:flex; gap:10px;">
-        <div style="flex:1">
-          <small>Latest price</small>
-          <h2 id="latestPrice">—</h2>
-        </div>
-        <div style="flex:1">
-          <small>Predicted (short)</small>
-          <h2 id="predPrice">—</h2>
-        </div>
-      </div>
-
-      <div style="margin-top:10px" id="priceNote" class="small">Prediction uses simple smoothing on recent values.</div>
+      <h2>💧 Humidity</h2>
+      <div class="value" id="humidity">-- %</div>
     </div>
-
     <div class="card">
-      <strong>Alerts</strong>
-      <div id="alertsArea" style="margin-top:10px">
-        <div class="small">No alerts</div>
-      </div>
+      <h2>📦 Preservation Days</h2>
+      <div class="value" id="preservation">-- days</div>
+    </div>
+    <div class="card">
+      <h2>💡 LED Control</h2>
+      <button id="ledButton" class="led-button off" onclick="toggleLED()">Turn ON</button>
     </div>
   </section>
 
-  <!-- RIGHT: charts & history -->
-  <section class="right">
-    <div class="card large">
-      <div style="display:flex; justify-content:space-between; align-items:center">
-        <div><strong>Live readings</strong> <div class="small">Real-time temperature & humidity trend</div></div>
-        <div class="small">Points: <span id="pointCount">0</span></div>
-      </div>
-      <div class="chart-container">
-        <canvas id="trendChart"></canvas>
-      </div>
-      <div class="history-table">
-        <table id="historyTable">
-          <thead><tr><th>Time</th><th>Crop</th><th>Temp (°C)</th><th>Hum (%)</th><th>Price (₹/kg)</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
+  <footer>Powered by ESP32 + DHT11 + MQTT | Agro Storage System</footer>
 
-    <div class="card">
-      <strong>Controls</strong>
-      <div class="small" style="margin-top:8px">Toggle LED on ESP32 (useful as remote actuator)</div>
-      <div style="margin-top:10px; display:flex; gap:10px">
-        <button id="ledToggle">Toggle LED</button>
-        <button id="reqStatus" class="secondary">Request Status</button>
-        <div style="flex:1; text-align:right"><span class="small">LED:</span> <strong id="ledState">—</strong></div>
-      </div>
-      <div style="margin-top:8px" class="small">Use this to test actuation and connectivity.</div>
-    </div>
-  </section>
-</main>
+  <script>
+    // ✅ Replace with your MQTT broker
+    const broker = "test.mosquitto.org";  
+    const port = 8081; // Websocket port
 
-<footer>
-  <div>Tip: For secure WSS to work, host this page with HTTPS (GitHub Pages is perfect). Topics used: <code>esp32/dht</code>, <code>esp32/market</code>, <code>esp32/led</code>.</div>
-  <div class="download"><small>Exportable CSV & live chart</small></div>
-</footer>
+    let clientID = "webClient-" + parseInt(Math.random() * 1000, 10);
+    let client = new Paho.MQTT.Client(broker, port, clientID);
 
-<script>
-/* ------------------------
-  CONFIG
----------------------------*/
-const BROKER = "broker.hivemq.com";
-const WSS_PORT = 8884;
-const MQTT_PATH = "/mqtt";
-const CLIENT_ID = "web_" + Math.random().toString(16).substr(2,8);
-const TOPIC_DHT = "esp32/dht";
-const TOPIC_MARKET = "esp32/market";
-const TOPIC_LED = "esp32/led";
-const TOPIC_BUTTON = "esp32/button";
+    client.onConnectionLost = function(response) {
+      console.log("Connection lost: " + response.errorMessage);
+    };
 
-/* ------------------------
-  CROPS CONFIG (basic)
-  Each crop: baseShelfDays, idealTempRange[Cmin,Cmax], idealHumRange
----------------------------*/
-const CROP_CONFIG = {
-  wheat: {name:"Wheat", baseDays:180, tmin:5, tmax:25, hmin:45, hmax:65},
-  rice:  {name:"Rice", baseDays:120, tmin:10, tmax:30, hmin:50, hmax:70},
-  potato:{name:"Potato", baseDays:90, tmin:4, tmax:15, hmin:85, hmax:95},
-  onion: {name:"Onion", baseDays:120, tmin:0, tmax:25, hmin:60, hmax:70},
-  maize: {name:"Maize", baseDays:150, tmin:5, tmax:30, hmin:50, hmax:70},
-  tomato:{name:"Tomato", baseDays:20, tmin:10, tmax:18, hmin:85, hmax:95}
-};
+    client.onMessageArrived = function(message) {
+      console.log("Message: " + message.destinationName + " - " + message.payloadString);
 
-/* ------------------------
-  UI bindings & state
----------------------------*/
-const connText = document.getElementById("connText");
-const connDot = document.getElementById("connDot");
-const connStatus = document.getElementById("connStatus");
-const brokerInfo = document.getElementById("brokerInfo");
+      if (message.destinationName === "esp32/dht/temp") {
+        document.getElementById("temperature").textContent = message.payloadString + " °C";
+      }
+      if (message.destinationName === "esp32/dht/hum") {
+        document.getElementById("humidity").textContent = message.payloadString + " %";
+      }
+      if (message.destinationName === "esp32/storage/days") {
+        document.getElementById("preservation").textContent = message.payloadString + " days";
+      }
+      if (message.destinationName === "esp32/led/state") {
+        updateLEDButton(message.payloadString);
+      }
+    };
 
-const tempVal = document.getElementById("tempVal");
-const humVal = document.getElementById("humVal");
-const lastUpdate = document.getElementById("lastUpdate");
-const currentCrop = document.getElementById("currentCrop");
-const preserveDays = document.getElementById("preserveDays");
-const preserveNote = document.getElementById("preserveNote");
-const cropSelect = document.getElementById("cropSelect");
-const refreshBtn = document.getElementById("refreshBtn");
-const csvBtn = document.getElementById("csvBtn");
-const alertsArea = document.getElementById("alertsArea");
-const latestPrice = document.getElementById("latestPrice");
-const predPrice = document.getElementById("predPrice");
-const marketInput = document.getElementById("marketInput");
-const sendPrice = document.getElementById("sendPrice");
-const ledToggle = document.getElementById("ledToggle");
-const reqStatus = document.getElementById("reqStatus");
-const ledStateText = document.getElementById("ledState");
-const historyBody = document.querySelector("#historyTable tbody");
-const pointCount = document.getElementById("pointCount");
-
-/* Chart setup */
-const ctx = document.getElementById("trendChart").getContext("2d");
-const chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [
-      { label: 'Temperature (°C)', data: [], tension:0.25, yAxisID:'y1', pointRadius:2 },
-      { label: 'Humidity (%)', data: [], tension:0.25, yAxisID:'y2', pointRadius:2 }
-    ]
-  },
-  options: {
-    maintainAspectRatio:false,
-    scales:{
-      y1:{ type:'linear', position:'left', title:{display:true, text:'°C'} },
-      y2:{ type:'linear', position:'right', title:{display:true, text:'%'}, grid:{ drawOnChartArea:false } }
-    },
-    plugins:{ legend:{labels:{boxWidth:10}} }
-  }
-});
-
-/* History buffer */
-const MAX_POINTS = 120;
-let history = []; // {ts, crop, temp, hum, price}
-let lastPrice = null;
-let priceSmoothing = null; // for simple prediction
-let ledState = "UNKNOWN";
-
-/* ------------------------
-  MQTT client (Paho)
----------------------------*/
-const client = new Paho.MQTT.Client(BROKER, WSS_PORT, MQTT_PATH, CLIENT_ID);
-client.onConnectionLost = (resp) => {
-  connText.textContent = "Disconnected";
-  connDot.style.background = "#f43f5e";
-  connStatus.textContent = "Disconnected";
-};
-client.onMessageArrived = (msg) => {
-  try {
-    const topic = msg.destinationName;
-    const payload = msg.payloadString;
-    if(topic === TOPIC_DHT){
-      // expected JSON: { temp:25.6, hum:68.2, crop:"wheat", ts:169... , price: 12.5 }
-      const d = JSON.parse(payload);
-      handleDHT(d);
-    } else if(topic === TOPIC_MARKET){
-      const d = JSON.parse(payload);
-      handleMarket(d);
-    } else if(topic === TOPIC_LED){
-      ledState = payload;
-      ledStateText.textContent = ledState;
+    function connectMQTT() {
+      client.connect({
+        onSuccess: () => {
+          console.log("Connected to broker");
+          client.subscribe("esp32/dht/temp");
+          client.subscribe("esp32/dht/hum");
+          client.subscribe("esp32/storage/days");
+          client.subscribe("esp32/led/state");
+        },
+        useSSL: true
+      });
     }
-  } catch(e){ console.warn("parse error", e); }
-};
 
-function onConnect(){
-  connText.textContent = "Connected";
-  connDot.style.background = "#10b981";
-  connStatus.textContent = `Connected to ${BROKER} (WSS)`;
-  client.subscribe(TOPIC_DHT);
-  client.subscribe(TOPIC_MARKET);
-  client.subscribe(TOPIC_LED);
-  // request initial status
-  setTimeout(()=>{ publish(TOPIC_BUTTON, "STATUS"); }, 800);
-}
+    function toggleLED() {
+      let btn = document.getElementById("ledButton");
+      let newState = btn.classList.contains("off") ? "ON" : "OFF";
+      let message = new Paho.MQTT.Message(newState);
+      message.destinationName = "esp32/led";
+      client.send(message);
+    }
 
-/* Connect options */
-client.connect({ onSuccess:onConnect, useSSL:true, timeout:5, keepAliveInterval:30 });
+    function updateLEDButton(state) {
+      let btn = document.getElementById("ledButton");
+      if (state === "ON") {
+        btn.textContent = "Turn OFF";
+        btn.classList.remove("off");
+      } else {
+        btn.textContent = "Turn ON";
+        btn.classList.add("off");
+      }
+    }
 
-function publish(topic, payload){
-  if(client && client.isConnected()){
-    const msg = new Paho.MQTT.Message(typeof payload === 'string' ? payload : JSON.stringify(payload));
-    msg.destinationName = topic;
-    client.send(msg);
-  } else {
-    console.warn("MQTT not connected");
-  }
-}
-
-/* ------------------------
-  Handlers
----------------------------*/
-function handleDHT(d){
-  const ts = d.ts ? new Date(d.ts) : new Date();
-  const temp = Number(d.temp);
-  const hum = Number(d.hum);
-  const crop = d.crop || cropSelect.value;
-  const price = d.price !== undefined ? Number(d.price) : null;
-
-  // Update UI metrics
-  tempVal.textContent = isNaN(temp)? '—' : temp.toFixed(1);
-  humVal.textContent = isNaN(hum)? '—' : hum.toFixed(1);
-  lastUpdate.textContent = ts.toLocaleString();
-  currentCrop.textContent = crop;
-
-  // push to history
-  history.push({ts:ts.toISOString(), crop, temp, hum, price});
-  if(history.length > MAX_POINTS) history.shift();
-
-  // update chart
-  syncChart();
-
-  // update table
-  addHistoryRow({ts, crop, temp, hum, price});
-
-  // update preserve estimate
-  updatePreservationEstimate(crop, temp, hum);
-
-  // alerts
-  checkAlerts(temp, hum, crop);
-
-  // update price smoothing/prediction
-  if(price !== null){
-    updatePrice(price);
-  }
-
-  pointCount.textContent = history.length;
-}
-
-function handleMarket(d){
-  const price = Number(d.price);
-  if(!isNaN(price)) updatePrice(price);
-}
-
-function updatePrice(price){
-  latestPrice.textContent = `₹ ${price.toFixed(2)}`;
-  lastPrice = price;
-  // exponential smoothing
-  const alpha = 0.25;
-  priceSmoothing = (priceSmoothing === null) ? price : (alpha * price + (1-alpha)*priceSmoothing);
-  const predicted = priceSmoothing + (priceSmoothing - price) * 0.05; // tiny bias
-  predPrice.textContent = `₹ ${predicted.toFixed(2)}`;
-}
-
-/* Chart sync */
-function syncChart(){
-  const labels = history.map(h => new Date(h.ts).toLocaleTimeString());
-  chart.data.labels = labels;
-  chart.data.datasets[0].data = history.map(h => h.temp);
-  chart.data.datasets[1].data = history.map(h => h.hum);
-  chart.update();
-}
-
-/* Add row */
-function addHistoryRow({ts, crop, temp, hum, price}){
-  const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${new Date(ts).toLocaleString()}</td>
-                  <td>${crop}</td>
-                  <td>${isNaN(temp)? '—' : temp.toFixed(1)}</td>
-                  <td>${isNaN(hum)? '—' : hum.toFixed(1)}</td>
-                  <td>${price===null? '—' : '₹ ' + price.toFixed(2)}</td>`;
-  historyBody.prepend(tr);
-  // keep only last 200 rows in DOM
-  while(historyBody.children.length > 200) historyBody.removeChild(historyBody.lastChild);
-}
-
-/* Preservation estimator:
-  - start with baseDays
-  - penalize for out-of-range temperature/humidity
-  - if temp too high -> big penalty; humidity extremes -> penalty
-*/
-function updatePreservationEstimate(cropKey, temp, hum){
-  const cfg = CROP_CONFIG[cropKey] || CROP_CONFIG.wheat;
-  let days = cfg.baseDays;
-
-  if(isNaN(temp) || isNaN(hum)){
-    preserveDays.textContent = "— days";
-    preserveNote.textContent = "Waiting for sensor data";
-    return;
-  }
-
-  // temperature penalty
-  const tmin = cfg.tmin, tmax = cfg.tmax;
-  if(temp < tmin){
-    const diff = tmin - temp;
-    days -= diff * 1.5; // cold damage for some crops
-  } else if(temp > tmax){
-    const diff = temp - tmax;
-    days -= diff * 4; // heat speeds spoilage faster
-  }
-
-  // humidity penalty
-  const hmin = cfg.hmin, hmax = cfg.hmax;
-  if(hum < hmin){
-    const diff = hmin - hum;
-    days -= diff * 0.8;
-  } else if(hum > hmax){
-    const diff = hum - hmax;
-    days -= diff * 1.2;
-  }
-
-  // clamp
-  if(days < 0) days = 0;
-  preserveDays.textContent = `${Math.round(days)} days`;
-
-  // note
-  let note = `Base shelf ~${cfg.baseDays}d. `;
-  if(temp > tmax || hum > hmax) note += "Warning: conditions outside ideal range.";
-  else note += "Conditions within ideal range.";
-  preserveNote.textContent = note;
-}
-
-/* Alerts */
-function checkAlerts(temp, hum, crop){
-  const cfg = CROP_CONFIG[crop] || CROP_CONFIG.wheat;
-  const alerts = [];
-  if(temp > cfg.tmax + 3) alerts.push(`High temp (${temp.toFixed(1)}°C) — risk of spoilage.`);
-  if(hum > cfg.hmax + 6) alerts.push(`High humidity (${hum.toFixed(1)}%) — risk of mold.`);
-  if(alerts.length === 0){
-    alertsArea.innerHTML = `<div class="ok">All good — storage conditions stable.</div>`;
-  } else {
-    alertsArea.innerHTML = alerts.map(a => `<div class="alert">${a}</div>`).join("");
-  }
-}
-
-/* ------------------------
-  UI events
----------------------------*/
-refreshBtn.addEventListener("click", ()=> {
-  const cur = cropSelect.value;
-  // immediate re-calc from last reading
-  const last = history[history.length-1];
-  if(last) updatePreservationEstimate(cur, last.temp, last.hum);
-});
-
-csvBtn.addEventListener("click", ()=> {
-  if(history.length === 0) return alert("No data to export");
-  let csv = "time,crop,temp,hum,price\n";
-  for(const r of history) csv += `${r.ts},${r.crop},${r.temp},${r.hum},${r.price===null?'':r.price}\n`;
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `agromind_history_${new Date().toISOString()}.csv`; a.click();
-  URL.revokeObjectURL(url);
-});
-
-sendPrice.addEventListener("click", ()=> {
-  const v = parseFloat(marketInput.value);
-  if(isNaN(v)) return alert("Enter numeric price");
-  // publish market price JSON
-  publish(TOPIC_MARKET, JSON.stringify({ price:v, ts: Date.now(), crop: cropSelect.value }));
-  marketInput.value = "";
-});
-
-ledToggle.addEventListener("click", ()=> {
-  publish(TOPIC_BUTTON, "TOGGLE");
-});
-
-reqStatus.addEventListener("click", ()=> {
-  publish(TOPIC_BUTTON, "STATUS");
-});
-
-/* ------------------------
-  Startup info
----------------------------*/
-brokerInfo.textContent = `${BROKER} (WSS:${WSS_PORT}${MQTT_PATH})`;
-
-/* ------------------------
-  Utility: On page unload disconnect gracefully
----------------------------*/
-window.addEventListener("beforeunload", () => {
-  try { if(client && client.isConnected()) client.disconnect(); } catch(e){}
-});
-
-</script>
+    connectMQTT();
+  </script>
 </body>
 </html>
